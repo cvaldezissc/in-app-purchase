@@ -40,18 +40,24 @@ iap.config({
 
     /* Configurations for HTTP request */
     requestDefaults: { /* Please refer to the request module documentation here: https://www.npmjs.com/package/request#requestoptions-callback */ },
-    
+
     /* Configurations for Amazon Store */
     amazonAPIVersion: 2, // tells the module to use API version 2
     secret: 'abcdefghijklmnoporstuvwxyz', // this comes from Amazon
     // amazonValidationHost: http://localhost:8080/RVSSandbox, // Local sandbox URL for testing amazon sandbox receipts.
-    
+
     /* Configurations for Apple */
-    appleExcludeOldTransactions: true // if you want to exclude old transaction, set this to true. Default is false
-    applePassword: 'abcdefg...', // this comes from iTunes Connect (You need this to valiate subscriptions)    
-    
+    appleExcludeOldTransactions: true, // if you want to exclude old transaction, set this to true. Default is false
+    applePassword: 'abcdefg...', // this comes from iTunes Connect (You need this to valiate subscriptions)
+
+    /* Configurations for Google Service Account validation: You can validate with just packageName, productId, and purchaseToken */
+    googleServiceAccount: {
+        clientEmail: '<client email from Google API service account JSON key file>',
+        privateKey: '<private key string from Google API service account JSON key file>'
+    },
+
     /* Configurations for Google Play */
-    googlePublicKeyPath: 'path/to/public/key/directory/' // this is the path to the directory containing iap-sanbox/iap-live files
+    googlePublicKeyPath: 'path/to/public/key/directory/', // this is the path to the directory containing iap-sanbox/iap-live files
     googlePublicKeyStrSandBox: 'publicKeySandboxString', // this is the google iap-sandbox public key string
     googlePublicKeyStrLive: 'publicKeyLiveString', // this is the google iap-live public key string
     googleAccToken: 'abcdef...', // optional, for Google Play subscriptions
@@ -59,18 +65,16 @@ iap.config({
     googleClientID: 'aaaa', // optional, for Google Play subscriptions
     googleClientSecret: 'bbbb', // optional, for Google Play subscriptions
 
-    /* Configurations for Google Service Account validation: You can validate with just packageName, productId, and purchaseToken */
-    googleServiceAccount: {
-        clientEmail: '<client email from Google API service account JSON key file>,'
-        privateKey: '<private key string from Google API service account JSON key file>'
-    },
-
     /* Configurations for Roku */
     rokuApiKey: 'aaaa...', // this comes from Roku Developer Dashboard
-    
+
+    /* Configurations for Facebook (Payments Lite) */
+    facebookAppId: '112233445566778',
+    facebookAppSecret: 'cafebabedeadbeefabcdef0123456789',
+
     /* Configurations all platforms */
     test: true, // For Apple and Googl Play to force Sandbox validation only
-    verbose: true // Output debug logs to stdout stream 
+    verbose: true // Output debug logs to stdout stream
 });
 iap.setup()
   .then(() => {
@@ -126,12 +130,28 @@ The module requires the above two compoents to be as a JSON object.
 
 If you are using Google service account instead of OAuth for Google, the receipt should look like:
 
+The API used is v3.
+
 ```
 {
     packageName: 'The packge name of the item purchased',
     productId: 'The product ID of the item purchased',
     purchaseToken: 'PurchaseToken of the receipt from Google',
     subscription: true/false // if the receipt is a subscription, then true
+}
+```
+
+### Google Play Using Google Service Account (with Unity receipt)
+
+If you are using Google service account with unity receipt, you need to add a 'Subscription' field to your unity receipt.
+The receipt should look like:
+
+```
+{
+    Store: 'The name of the store in use, such as GooglePlay or AppleAppStore',
+    TransactionID: 'This transaction's unique identifier, provided by the store',
+    Payload: 'Varies by platform, see [Unity Receipt Documentation](https://docs.unity3d.com/Manual/UnityIAPPurchaseReceipts.html)',
+    Subscription: true/false // if the receipt is a subscription, then true
 }
 ```
 
@@ -158,7 +178,11 @@ A Roku's receipt is a transaction ID string.
 
 ### Windows
 
-A Windows' receipt is an XML string. 
+A Windows' receipt is an XML string.
+
+### Facebook (Payments Lite)
+
+A Facebook's receipt is signed_request string of payment response.
 
 ## Validate Receipts From Multiple Applications
 
@@ -227,6 +251,19 @@ iap.config(configObject);
 iap.setup()
   .then(() => {
     iap.validateOnce(receipt, rokuApiKeyString).then(onSuccess).catch(onError);
+  })
+  .catch((error) => {
+    // error...
+  });
+```
+
+### Facebook (Payments Lite)
+
+```javascript
+iap.config(configObject);
+iap.setup()
+  .then(() => {
+    iap.validateOnce(receipt, appAccessToken).then(onSuccess).catch(onError);
   })
   .catch((error) => {
     // error...
@@ -358,7 +395,7 @@ To check expiration date or auto renewal status of an Android subscription, you 
 4. On the left, find "Google Play Developer API v3"
  * Select "https://www.googleapis.com/auth/androidpublisher"
 5. Hit Authorize Api's button
-6. Save `Authorization Code` 
+6. Save `Authorization Code`
  * This is your: **googleAccToken**
 7. Hit `Exchange Authorization code for token`
 8. Grab: `Refresh Token`
@@ -389,6 +426,14 @@ in-app-purchase module supports the following algorithms:
 - SHA256 digests http://www.w3.org/2001/04/xmlenc#sha256
 
 - SHA512 digests http://www.w3.org/2001/04/xmlenc#sha512
+
+## Facebook Order Fulfillment and Signed Request Parsing
+
+- Facebook Payments Order Fulfillment: https://developers.facebook.com/docs/games_payments/fulfillment#orderfulfillment
+
+- Facebook Signed Request Parsing: https://developers.facebook.com/docs/games/gamesonfacebook/login#parsingsr
+
+- **NOTE:** Payments `Lite` does not support subscription.
 
 ## HTTP Request Configurations
 
